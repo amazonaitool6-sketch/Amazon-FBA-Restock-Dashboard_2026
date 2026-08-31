@@ -1,0 +1,597 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Amazon FBA Products Selection Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<style>
+  :root{
+    --bg: #F7F8FA;
+    --panel: #FFFFFF;
+    --border: #DADFE6;
+    --border-soft: #E9ECF1;
+    --text: #1B222E;
+    --text-dim: #6B7383;
+    --text-faint: #9AA1B0;
+    --link: #1155CC;
+    --out: #C0392B;
+    --out-bg: #FCEBE9;
+    --low: #B5790A;
+    --low-bg: #FCF2DD;
+    --ok: #1E8E5A;
+    --ok-bg: #E7F6EE;
+    --accent: #1155CC;
+    --radius: 8px;
+  }
+  *{box-sizing:border-box;}
+  html,body{height:100%;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--text);
+    font-family:'Inter',sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:100%;margin:0 auto;padding:22px 32px 50px;}
+
+  .sticky-panel{
+    position:sticky;top:0;z-index:40;background:var(--bg);
+    padding-top:2px;margin-left:-32px;margin-right:-32px;padding-left:32px;padding-right:32px;
+  }
+
+  header.top{
+    display:flex;align-items:center;justify-content:space-between;gap:16px;
+    flex-wrap:wrap;margin-bottom:16px;padding-top:20px;
+  }
+  header.top h1{
+    font-family:'Space Grotesk',sans-serif;
+    font-size:19px;font-weight:700;margin:0;letter-spacing:-0.01em;color:var(--text);
+  }
+  .import-btn{
+    display:inline-flex;align-items:center;gap:7px;
+    background:var(--panel);border:1px solid var(--border);color:var(--link);
+    padding:9px 15px;border-radius:6px;font-size:13.5px;font-weight:600;cursor:pointer;
+    font-family:'Inter',sans-serif;
+  }
+  .import-btn:hover{background:#F1F5FE;border-color:var(--link);}
+  #fileInput{display:none;}
+  .file-tag{font-size:12px;color:var(--text-dim);margin-top:6px;text-align:right;}
+
+  /* tabs */
+  .tabs{display:flex;gap:2px;border-bottom:1px solid var(--border);margin-bottom:0;}
+  .tabs button{
+    background:transparent;border:none;border-bottom:2px solid transparent;
+    padding:9px 16px 10px;font-size:13px;font-weight:600;color:var(--text-dim);
+    cursor:pointer;font-family:'Inter',sans-serif;display:flex;align-items:center;gap:7px;
+  }
+  .tabs button .count{
+    font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:500;
+    background:var(--border-soft);color:var(--text-dim);padding:1px 6px;border-radius:99px;
+  }
+  .tabs button.active{color:var(--text);border-bottom-color:var(--accent);}
+  .tabs button.active .count{background:#DCE6FA;color:var(--accent);}
+  .tabs button[data-tab="out"].active{border-bottom-color:var(--out);}
+  .tabs button[data-tab="out"].active .count{background:var(--out-bg);color:var(--out);}
+  .tabs button[data-tab="low"].active{border-bottom-color:var(--low);}
+  .tabs button[data-tab="low"].active .count{background:var(--low-bg);color:var(--low);}
+  .tabs button[data-tab="ok"].active{border-bottom-color:var(--ok);}
+  .tabs button[data-tab="ok"].active .count{background:var(--ok-bg);color:var(--ok);}
+  .tabs button[data-tab="selected"].active{border-bottom-color:var(--accent);}
+  .tabs button[data-tab="selected"].active .count{background:#DCE6FA;color:var(--accent);}
+
+  .toolbar{
+    display:flex;align-items:center;gap:10px;margin:14px 0;flex-wrap:wrap;
+    background:var(--bg);padding-bottom:10px;border-bottom:1px solid var(--border);
+  }
+  .search{
+    flex:1;min-width:200px;background:var(--panel);border:1px solid var(--border);border-radius:6px;
+    padding:8px 12px;color:var(--text);font-size:13px;font-family:'Inter',sans-serif;
+  }
+  .search::placeholder{color:var(--text-faint);}
+  .search:focus{outline:none;border-color:var(--accent);}
+  .btn-export{
+    background:var(--panel);border:1px solid var(--border);color:var(--text);
+    padding:8px 14px;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;font-family:'Inter',sans-serif;
+  }
+  .btn-export:hover{border-color:var(--accent);color:var(--accent);}
+
+  /* sheet-style table */
+  .sheet{
+    background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);
+    overflow:auto;
+    max-height:calc(100vh - 230px);
+  }
+  table{width:100%;border-collapse:collapse;font-size:12.5px;table-layout:fixed;}
+  thead th{
+    position:sticky;top:0;z-index:5;
+    text-align:center;padding:10px 12px;color:var(--text-dim);font-weight:700;
+    font-size:11.5px;background:#FAFBFC;border-bottom:1px solid var(--border);
+    border-right:1px solid var(--border-soft);white-space:normal;cursor:pointer;
+    line-height:1.35;
+  }
+  thead th:last-child{border-right:none;}
+  thead th:hover{color:var(--text);background:#F2F4F8;}
+  thead th.sorted{color:var(--accent);}
+  thead th .arrow{font-size:10px;margin-left:3px;}
+  thead tr.group th{
+    top:0;text-align:center;background:#F2F4F8;font-size:10.5px;letter-spacing:0.03em;
+    color:var(--text-faint);border-bottom:1px solid var(--border-soft);height:22px;padding:4px 12px;
+  }
+  #dataTable thead tr:last-child th{top:22px;}
+  #selectedTable thead tr th{top:0;}
+  thead th[data-key="sku"]{text-align:left;}
+  .resizer{
+    position:absolute;top:0;right:0;width:6px;height:100%;cursor:col-resize;
+    user-select:none;touch-action:none;
+  }
+  .resizer:hover, .resizer.resizing{background:var(--accent);opacity:.4;}
+  tbody td{
+    padding:5px 12px;border-bottom:1px solid var(--border-soft);border-right:1px solid var(--border-soft);
+    vertical-align:middle;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+    text-align:center;
+  }
+  tbody td:last-child{border-right:none;}
+  tbody tr:hover{background:#F7FAFF;}
+  .fnsku{color:var(--link);font-family:'JetBrains Mono',monospace;font-size:11.5px;font-weight:600;}
+  .fnsku a:hover{text-decoration:underline !important;}
+  .pname{color:var(--text-dim);font-size:11.5px;margin-top:2px;max-width:220px;}
+  .num{font-family:'JetBrains Mono',monospace;}
+  .badge{
+    display:inline-flex;align-items:center;padding:3px 9px;border-radius:99px;font-size:11px;font-weight:700;
+  }
+  .badge.out{background:var(--out-bg);color:var(--out);}
+  .badge.low{background:var(--low-bg);color:var(--low);}
+  .badge.ok{background:var(--ok-bg);color:var(--ok);}
+  .muted{color:var(--text-faint);}
+  .row-check{width:16px;height:16px;cursor:pointer;accent-color:var(--accent);}
+  .suggestion-input{
+    width:80px;text-align:center;padding:4px 8px;border:1px solid var(--border);
+    border-radius:6px;font-family:'JetBrains Mono',monospace;font-size:12.5px;color:var(--text);
+    background:var(--panel);
+  }
+  .suggestion-input:focus{outline:none;border-color:var(--accent);}
+
+  .empty-state{text-align:center;padding:50px 20px;color:var(--text-dim);}
+  .empty-state .big{font-size:14.5px;color:var(--text);font-weight:700;margin-bottom:6px;}
+
+  /* first-load placeholder */
+  .placeholder{
+    background:var(--panel);border:1px dashed var(--border);border-radius:var(--radius);
+    padding:60px 20px;text-align:center;color:var(--text-dim);cursor:pointer;
+  }
+  .placeholder .big{font-size:15px;font-weight:700;color:var(--text);margin-bottom:6px;}
+  .placeholder .small{font-size:13px;}
+
+  footer.note{margin-top:16px;color:var(--text-faint);font-size:11.5px;text-align:center;}
+
+  @media (max-width:720px){
+    header.top{align-items:flex-start;}
+    .pname{display:none;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="sticky-panel" id="stickyPanel">
+    <header class="top">
+      <h1>Amazon FBA Products Selection Dashboard</h1>
+      <div>
+        <button class="import-btn" id="importBtn">⬆ Import Restock File</button>
+        <input type="file" id="fileInput" accept=".csv">
+        <div class="file-tag" id="fileTag"></div>
+      </div>
+    </header>
+
+    <div id="dashboardTabsToolbar" style="display:none;">
+      <div class="tabs" id="tabs">
+        <button data-tab="all" class="active">Tab 1 · All <span class="count" id="cAll">0</span></button>
+        <button data-tab="out">Out of Stock <span class="count" id="cOut">0</span></button>
+        <button data-tab="low">Low Stock <span class="count" id="cLow">0</span></button>
+        <button data-tab="ok">Healthy <span class="count" id="cOk">0</span></button>
+        <button data-tab="selected">Selected products <span class="count" id="cSelected">0</span></button>
+      </div>
+
+      <div class="toolbar">
+        <input type="text" class="search" id="searchBox" placeholder="Search FNSKU, product name, ASIN...">
+        <button class="btn-export" id="exportBtn">Export view (CSV)</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="placeholderWrap">
+    <div class="placeholder" id="placeholder">
+      <div class="big">No restock file loaded yet</div>
+      <div class="small">Click "Import Restock File" above and choose your Amazon restock CSV export</div>
+    </div>
+  </div>
+
+  <div id="dashboard" style="display:none;">
+    <div class="sheet">
+      <table id="dataTable">
+        <colgroup>
+          <col style="width:130px" data-key="asin">
+          <col style="width:230px" data-key="sku">
+          <col style="width:120px" data-key="fnsku">
+          <col style="width:95px" data-key="condition">
+          <col style="width:90px" data-key="country">
+          <col style="width:95px" data-key="price">
+          <col style="width:120px" data-key="salesLast30">
+          <col style="width:90px" data-key="inbound">
+          <col style="width:90px" data-key="available">
+          <col style="width:100px" data-key="totalUnits">
+          <col style="width:110px" data-key="status">
+          <col style="width:60px" data-key="select">
+        </colgroup>
+        <thead>
+          <tr class="group">
+            <th></th><th></th><th></th><th></th><th></th><th></th><th></th>
+            <th colspan="2">Units</th>
+            <th></th><th></th><th></th>
+          </tr>
+          <tr>
+            <th data-key="asin">ASIN<span class="resizer"></span></th>
+            <th data-key="sku">Merchant SKU<span class="resizer"></span></th>
+            <th data-key="fnsku">FNSKU<span class="resizer"></span></th>
+            <th data-key="condition">Condition<span class="resizer"></span></th>
+            <th data-key="country">Country<span class="resizer"></span></th>
+            <th data-key="price">Price<span class="resizer"></span></th>
+            <th data-key="salesLast30">Units Sold Last 30 Days<span class="resizer"></span></th>
+            <th data-key="inbound">Inbound<span class="resizer"></span></th>
+            <th data-key="available">Available<span class="resizer"></span></th>
+            <th data-key="totalUnits">Total Units<span class="resizer"></span></th>
+            <th data-key="status">Status<span class="resizer"></span></th>
+            <th style="cursor:default;">Select</th>
+          </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
+
+      <table id="selectedTable" style="display:none;">
+        <colgroup>
+          <col style="width:50px">
+          <col style="width:150px">
+          <col style="width:260px">
+          <col style="width:180px">
+          <col style="width:140px">
+          <col style="width:120px">
+          <col style="width:180px">
+        </colgroup>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>ASIN</th>
+            <th style="text-align:left;">Merchant SKU</th>
+            <th>Units Sold Last 30 Days</th>
+            <th>Total Units</th>
+            <th>Status</th>
+            <th>Our Suggestion</th>
+          </tr>
+        </thead>
+        <tbody id="selectedTbody"></tbody>
+      </table>
+
+      <div class="empty-state" id="emptyState" style="display:none;">
+        <div class="big">Nothing matches</div>
+        <div>Try a different tab or search term.</div>
+      </div>
+      <div class="empty-state" id="emptySelectedState" style="display:none;">
+        <div class="big">No products selected yet</div>
+        <div>Tick the checkbox next to a product in any tab to add it here.</div>
+      </div>
+    </div>
+  </div>
+
+  <footer class="note">Processed entirely in your browser — the file never leaves this page.</footer>
+</div>
+
+<script>
+let rows = [];
+let sortKey = 'salesLast30';
+let sortDir = 'desc';
+let activeTab = 'all';
+let searchTerm = '';
+let selected = new Set();
+let suggestions = {};
+
+const fileInput = document.getElementById('fileInput');
+const importBtn = document.getElementById('importBtn');
+const placeholder = document.getElementById('placeholder');
+const fileTag = document.getElementById('fileTag');
+const dashboard = document.getElementById('dashboard');
+const placeholderWrap = document.getElementById('placeholderWrap');
+const dashboardTabsToolbar = document.getElementById('dashboardTabsToolbar');
+
+importBtn.addEventListener('click', () => fileInput.click());
+placeholder.addEventListener('click', () => fileInput.click());
+fileInput.addEventListener('change', e => { if (e.target.files.length) handleFile(e.target.files[0]); });
+
+function handleFile(file){
+  fileTag.textContent = file.name + ' loaded';
+  Papa.parse(file, {
+    header: true,
+    skipEmptyLines: true,
+    complete: (results) => {
+      rows = results.data.map(normalizeRow).filter(r => r.fnsku);
+      placeholderWrap.style.display = 'none';
+      dashboardTabsToolbar.style.display = 'block';
+      dashboard.style.display = 'block';
+      render();
+    },
+    error: (err) => alert('Could not read this file: ' + err.message)
+  });
+}
+
+function normalizeRow(r){
+  const alertRaw = (r['Alert'] || '').trim().toLowerCase();
+  let status = 'ok';
+  if (alertRaw === 'out_of_stock') status = 'out';
+  else if (alertRaw === 'low_stock') status = 'low';
+  const priorityMap = { out: 0, low: 1, ok: 2 };
+  return {
+    asin: r['ASIN'] || '',
+    sku: r['Merchant SKU'] || '',
+    fnsku: r['FNSKU'] || '',
+    name: r['Product Name'] || '',
+    condition: r['Condition'] || '',
+    country: r['Country'] || '',
+    price: r['Price'] || '',
+    currency: r['Currency code'] || '',
+    salesLast30: toNum(r['Units Sold Last 30 Days']),
+    inbound: toNum(r['Inbound']),
+    available: toNum(r['Available']),
+    totalUnits: toNum(r['Total Units']),
+    recommendedQty: toNum(r['Recommended replenishment qty']),
+    status,
+    priority: priorityMap[status]
+  };
+}
+function toNum(v){ const n = parseFloat(v); return isNaN(n) ? 0 : n; }
+const currencySymbols = { GBP:'£', USD:'$', EUR:'€', JPY:'¥', CAD:'$', AUD:'$', INR:'₹' };
+function currencySymbol(code){ return currencySymbols[code] || (code ? code + ' ' : ''); }
+
+document.getElementById('tabs').addEventListener('click', e => {
+  const btn = e.target.closest('button');
+  if (!btn) return;
+  document.querySelectorAll('#tabs button').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  activeTab = btn.dataset.tab;
+  const sheetEl = document.querySelector('.sheet');
+  if (sheetEl) sheetEl.scrollTop = 0;
+  render();
+  requestAnimationFrame(() => { if (sheetEl) sheetEl.scrollTop = 0; });
+});
+
+document.getElementById('searchBox').addEventListener('input', e => {
+  searchTerm = e.target.value.trim().toLowerCase();
+  render();
+});
+
+document.querySelectorAll('#dataTable thead tr:last-child th[data-key]').forEach(th => {
+  th.addEventListener('click', () => {
+    const key = th.dataset.key;
+    if (sortKey === key) sortDir = sortDir === 'asc' ? 'desc' : 'asc';
+    else { sortKey = key; sortDir = 'asc'; }
+    render();
+  });
+});
+
+document.getElementById('tbody').addEventListener('change', e => {
+  if (e.target.classList.contains('row-check')) {
+    const fnsku = e.target.dataset.fnsku;
+    if (e.target.checked) selected.add(fnsku);
+    else selected.delete(fnsku);
+    document.getElementById('cSelected').textContent = selected.size;
+  }
+});
+
+document.getElementById('selectedTbody').addEventListener('input', e => {
+  if (e.target.classList.contains('suggestion-input')) {
+    const fnsku = e.target.dataset.fnsku;
+    suggestions[fnsku] = e.target.value;
+  }
+});
+
+document.getElementById('exportBtn').addEventListener('click', () => {
+  if (activeTab === 'selected') {
+    const list = getFilteredSorted();
+    const header = ['ASIN','Merchant SKU','Our Suggestion'];
+    const lines = [header.join(',')];
+    list.forEach(r => {
+      const qty = suggestions[r.fnsku] !== undefined ? suggestions[r.fnsku] : '';
+      const vals = [r.asin, r.sku, qty]
+        .map(v => `"${String(v).replace(/"/g,'""')}"`);
+      lines.push(vals.join(','));
+    });
+    const blob = new Blob([lines.join('\n')], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'fba_selected_products.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+    return;
+  }
+  const view = getFilteredSorted();
+  const header = ['ASIN','Merchant SKU','FNSKU','Condition','Country','Price','Units Sold Last 30 Days','Inbound','Available','Total Units','Status'];
+  const lines = [header.join(',')];
+  view.forEach(r => {
+    const vals = [r.asin, r.sku, r.fnsku, r.condition, r.country, r.price, r.salesLast30, r.inbound, r.available, r.totalUnits, r.status]
+      .map(v => `"${String(v).replace(/"/g,'""')}"`);
+    lines.push(vals.join(','));
+  });
+  const blob = new Blob([lines.join('\n')], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'fba_selection_export.csv';
+  a.click();
+  URL.revokeObjectURL(url);
+});
+
+function getFilteredSorted(){
+  let list;
+  if (activeTab === 'selected') {
+    list = rows.filter(r => selected.has(r.fnsku));
+  } else {
+    list = rows.filter(r => activeTab === 'all' || r.status === activeTab);
+    if (activeTab === 'out') {
+      list = list.filter(r => r.salesLast30 > 0 && r.totalUnits === 0);
+    }
+    if (activeTab === 'low') {
+      list = list.filter(r => r.totalUnits < r.salesLast30 / 2);
+    }
+  }
+  if (searchTerm) {
+    list = list.filter(r =>
+      r.fnsku.toLowerCase().includes(searchTerm) ||
+      r.name.toLowerCase().includes(searchTerm) ||
+      r.asin.toLowerCase().includes(searchTerm) ||
+      r.sku.toLowerCase().includes(searchTerm)
+    );
+  }
+  list.sort((a,b) => {
+    let av = a[sortKey], bv = b[sortKey];
+    if (typeof av === 'string') av = av.toLowerCase();
+    if (typeof bv === 'string') bv = bv.toLowerCase();
+    if (av < bv) return sortDir === 'asc' ? -1 : 1;
+    if (av > bv) return sortDir === 'asc' ? 1 : -1;
+    return 0;
+  });
+  return list;
+}
+
+function badge(status){
+  if (status === 'out') return '<span class="badge out">Out of stock</span>';
+  if (status === 'low') return '<span class="badge low">Low stock</span>';
+  return '<span class="badge ok">Healthy</span>';
+}
+
+function render(){
+  document.querySelectorAll('#dataTable thead tr:last-child th[data-key]').forEach(th => {
+    th.classList.toggle('sorted', th.dataset.key === sortKey);
+    th.querySelector('.arrow')?.remove();
+    if (th.dataset.key === sortKey) {
+      const arrow = document.createElement('span');
+      arrow.className = 'arrow';
+      arrow.textContent = sortDir === 'asc' ? '↑' : '↓';
+      th.appendChild(arrow);
+    }
+  });
+
+  document.getElementById('cAll').textContent = rows.length;
+  document.getElementById('cOut').textContent = rows.filter(r => r.status === 'out' && r.salesLast30 > 0 && r.totalUnits === 0).length;
+  document.getElementById('cLow').textContent = rows.filter(r => r.status === 'low' && r.totalUnits < r.salesLast30 / 2).length;
+  document.getElementById('cOk').textContent = rows.filter(r => r.status === 'ok').length;
+  document.getElementById('cSelected').textContent = selected.size;
+
+  const list = getFilteredSorted();
+  const dataTable = document.getElementById('dataTable');
+  const selectedTable = document.getElementById('selectedTable');
+  const emptyState = document.getElementById('emptyState');
+  const emptySelectedState = document.getElementById('emptySelectedState');
+
+  if (activeTab === 'selected') {
+    dataTable.style.display = 'none';
+    selectedTable.style.display = '';
+    emptyState.style.display = 'none';
+    const tbody = document.getElementById('selectedTbody');
+    if (!list.length) {
+      tbody.innerHTML = '';
+      emptySelectedState.style.display = 'block';
+      return;
+    }
+    emptySelectedState.style.display = 'none';
+    tbody.innerHTML = list.map((r, i) => {
+      const defaultQty = suggestions[r.fnsku] !== undefined ? suggestions[r.fnsku] : '';
+      return `
+      <tr>
+        <td class="num muted">${i + 1}</td>
+        <td class="fnsku">${r.asin ? `<a href="https://www.amazon.co.uk/dp/${encodeURIComponent(r.asin)}" target="_blank" rel="noopener" style="color:inherit;text-decoration:none;">${escapeHtml(r.asin)}</a>` : '<span class="muted">—</span>'}</td>
+        <td class="fnsku" style="text-align:left;">${escapeHtml(r.sku) || '<span class="muted">—</span>'}</td>
+        <td class="num" style="color:var(--out);font-weight:700;">${r.salesLast30}</td>
+        <td class="num" style="color:var(--ok);font-weight:700;">${r.totalUnits}</td>
+        <td>${badge(r.status)}</td>
+        <td><input type="number" min="0" class="suggestion-input" data-fnsku="${escapeHtml(r.fnsku)}" value="${defaultQty}" placeholder="Enter qty"></td>
+      </tr>
+    `;
+    }).join('');
+    return;
+  }
+
+  dataTable.style.display = '';
+  selectedTable.style.display = 'none';
+  emptySelectedState.style.display = 'none';
+  const tbody = document.getElementById('tbody');
+
+  if (!list.length) {
+    tbody.innerHTML = '';
+    emptyState.style.display = 'block';
+    return;
+  }
+  emptyState.style.display = 'none';
+
+  tbody.innerHTML = list.map(r => `
+    <tr>
+      <td class="fnsku">${r.asin ? `<a href="https://www.amazon.co.uk/dp/${encodeURIComponent(r.asin)}" target="_blank" rel="noopener" style="color:inherit;text-decoration:none;">${escapeHtml(r.asin)}</a>` : '<span class="muted">—</span>'}</td>
+      <td class="fnsku" style="text-align:left;">${escapeHtml(r.sku) || '<span class="muted">—</span>'}</td>
+      <td class="fnsku">${escapeHtml(r.fnsku) || '<span class="muted">—</span>'}</td>
+      <td>${escapeHtml(r.condition) || '<span class="muted">—</span>'}</td>
+      <td>${escapeHtml(r.country) || '<span class="muted">—</span>'}</td>
+      <td class="num">${r.price ? currencySymbol(r.currency) + escapeHtml(r.price) : '<span class="muted">—</span>'}</td>
+      <td class="num" style="color:var(--out);font-weight:700;">${r.salesLast30}</td>
+      <td class="num">${r.inbound}</td>
+      <td class="num">${r.available}</td>
+      <td class="num" style="color:var(--ok);font-weight:700;">${r.totalUnits}</td>
+      <td>${badge(r.status)}</td>
+      <td><input type="checkbox" class="row-check" data-fnsku="${escapeHtml(r.fnsku)}" ${selected.has(r.fnsku) ? 'checked' : ''}></td>
+    </tr>
+  `).join('');
+}
+
+function escapeHtml(str){
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+// column resize
+(function initResizers(){
+  const table = document.getElementById('dataTable');
+  const cols = table.querySelectorAll('colgroup col');
+  document.querySelectorAll('.resizer').forEach((resizer, idx) => {
+    let startX, startWidth, col;
+    resizer.addEventListener('click', e => e.stopPropagation());
+    resizer.addEventListener('mousedown', e => {
+      e.preventDefault();
+      e.stopPropagation();
+      col = cols[idx];
+      startX = e.pageX;
+      startWidth = col.offsetWidth || parseInt(col.style.width);
+      resizer.classList.add('resizing');
+      document.body.style.cursor = 'col-resize';
+      document.body.style.userSelect = 'none';
+      document.addEventListener('mousemove', onMove);
+      document.addEventListener('mouseup', onUp);
+    });
+    function onMove(e){
+      const delta = e.pageX - startX;
+      const newWidth = Math.max(50, startWidth + delta);
+      col.style.width = newWidth + 'px';
+    }
+    function onUp(){
+      resizer.classList.remove('resizing');
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+    }
+  });
+})();
+
+</script>
+</body>
+</html>
